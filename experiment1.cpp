@@ -3,6 +3,7 @@
 #include <string>
 #include <cctype>
 #include <math.h>
+#include <fstream>
 
 using namespace std;
 
@@ -56,7 +57,7 @@ string convertToUpper(string word)
 	return word;
 }
 
-bool onlyLetters(string word)
+bool onlyLetters(const string& word)
 {
 	for (int i=0; i<word.length(); i++)
 	{
@@ -66,7 +67,7 @@ bool onlyLetters(string word)
 	return true;
 }
 
-vector<int> calculateScoreVector(string word)
+vector<int> calculateScoreVector(const string& word)
 {
 	vector<int> scoreVector;
 	for (int i=0; i<word.length(); i++)
@@ -76,7 +77,7 @@ vector<int> calculateScoreVector(string word)
 	return scoreVector;
 }
 
-double calculateVectorMagnitude(vector<int> score)
+double calculateVectorMagnitude(const vector<int>& score)
 {
 	long sqsum;
 	for (int i=0; i<score.size(); i++)
@@ -94,12 +95,12 @@ vector<int> calculateVectorialDifference(vector<int> vector1, vector<int> vector
 	while(vector1.size() > vector2.size())
 	{
 		vector2.push_back(0);
-		cout << "Adding padding element 0 to vector2\n";
+//		cout << "Adding padding element 0 to vector2\n";
 	}
 	while(vector2.size() > vector1.size())
 	{
 		vector1.push_back(0);
-		cout << "Adding padding element 0 to vector1\n";
+//		cout << "Adding padding element 0 to vector1\n";
 	}
 	for (int i = 0; i<vector1.size(); i++) 
 	{
@@ -109,34 +110,77 @@ vector<int> calculateVectorialDifference(vector<int> vector1, vector<int> vector
 
 }
 
-int main()
+void loadList(vector<WordlistElement>& pwordlistVector,ifstream& pwordlistFile, const vector<int>& refScore)
 {
-	string word1;
-	vector<string> words;
-	vector<vector<int>> scores;
+	WordlistElement element;
+	string tmpword;
 
-	cout << "Input words, enter EOF to finish (Ctrl+D):\n>>";
-	while(cin >> word1)
+	while(pwordlistFile.good())
 	{
-		words.push_back(word1);
-	}
-	cout << "OK, calculating...\n";
-	
-	for (int i =0; i<words.size(); i++)
-	{
-		if (!onlyLetters(words[i]))
+		getline(pwordlistFile, tmpword);
+		if(tmpword != "")
 		{
-			cout << "ERR: Only letters\n";
-			return 1;
+		element.setWord(tmpword);
+		element.setScoreVector(calculateScoreVector(tmpword));
+		element.setDifferenceMagnitude(calculateVectorMagnitude(calculateVectorialDifference(calculateScoreVector(tmpword), refScore)));
+		pwordlistVector.push_back(element);
 		}
-		words[i] = convertToUpper(words[i]);
-		cout << "Calculating score...\n";
-		scores.push_back(calculateScoreVector(words[i]));
 	}
-	vector<int> difference = calculateVectorialDifference(scores[0], scores[1]);
-	
-	cout << "Getting magnitude...:\n";
-	cout << calculateVectorMagnitude(difference);
+//	cout << "finished reading file\n";
+	pwordlistFile.close();
+}
+
+void getMinimum(vector<WordlistElement>& pwordlistVector)
+{
+	string out = pwordlistVector[0].getWord();
+//	cout << "initial word = " << out << endl;
+//	cout << "size = " << pwordlistVector.size() << endl;
+	for(int i=1; i<pwordlistVector.size(); i++)
+	{
+		if(pwordlistVector[i].getDifferenceMagnitude() < pwordlistVector[i-1].getDifferenceMagnitude())
+		{
+			out = pwordlistVector[i].getWord();
+//			cout << "temp winner = " << out << endl;
+		}
+			
+	}
+	cout << "Most similar word in wordlist: " << out << '\n';
+}
+
+int main(int argc, char** argv)
+{
+	WordlistElement word1;
+	vector<WordlistElement> wordlistVector;
+	ifstream wordlistFile;
+	if (argc < 3)
+	{
+		cout << "ERR: 2 args: <word> <wordlistfile>\n";
+		return 4;
+	}
+	word1.setWord(argv[1]);
+	wordlistFile.open(argv[2]);
+	word1.setScoreVector(calculateScoreVector(word1.getWord()));
+
+
+	if (!wordlistFile.good())
+	{
+		cout << "ERR: Unable to open wordlist file\n";
+		return 2;
+	}
+
+	if (!onlyLetters(word1.getWord()))
+	{
+		cout << "ERR: Only letters\n";
+		return 1;
+	}
+	word1.setWord(convertToUpper(word1.getWord()));
+	loadList(wordlistVector, wordlistFile, word1.getScoreVector());
+	if(wordlistVector.size() < 1)
+	{
+		cout << "ERR: empty wordlist";
+		return 5;
+	}
+	getMinimum(wordlistVector);
 
 	return 0;
 
